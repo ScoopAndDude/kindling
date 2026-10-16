@@ -12,6 +12,23 @@ export const Route = createFileRoute("/")({
 
 const FEATURED = ["mirror-tarn", "saltgrass", "red-rim", "high-larch"];
 
+const SCOOP = [
+  { href: "/van-life/", title: "Van life", detail: "The crew, the rig, and a Great Dane." },
+  { href: "/dinner/", title: "The Dinner Scoop", detail: "Tonight's dinner, the week, and the grocery list." },
+  { href: "/camp-map/", title: "Your old camp map", detail: "The original Scoop & Dude map, still on this site." },
+  { href: "/projects/", title: "Projects", detail: "Faith, markets, the Amazon, art, and the rest." },
+  { href: "/faith/", title: "Daily Faith", detail: "A verse and a hymn." },
+  { href: "/markets/", title: "Markets", detail: "Stocks, oil, crops, and jobs in plain words." },
+  { href: "/amazon/", title: "Amazon watch", detail: "The rainforest, in numbers." },
+  { href: "/world-art/", title: "World art", detail: "Cave paintings through the modern." },
+  { href: "/ai-survival-guide/", title: "AI survival guide", detail: "Plain talk about living with AI." },
+  { href: "/printables/", title: "Printables", detail: "Planners from the road." },
+  { href: "/friends/", title: "Friends", detail: "Pages for people far away." },
+  { href: "/space-lab/", title: "Space lab", detail: "The sky, from the road." },
+  { href: "https://laporteweathernow.com", title: "La Porte Weather Now", detail: "The radar back home." },
+  { href: "https://www.etsy.com/shop/ScoopAndDude", title: "Etsy shop", detail: "Printables you can take with you." },
+];
+
 function Home() {
   const trips = useCamp((state) => state.trips);
   const savedSites = useCamp((state) => state.savedSites);
@@ -61,6 +78,28 @@ function Home() {
           </Link>
         </header>
       )}
+
+      <section id="scoop">
+        <div className="mb-4">
+          <p className="text-sm font-medium text-pine">Scoop & Dude</p>
+          <h2 className="mt-1 font-display text-3xl text-ink">The rest of the place</h2>
+          <p className="mt-2 max-w-xl text-muted">
+            The camp map is Kindling. The van, dinner, and the other projects are on this same site.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {SCOOP.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className="rounded-2xl bg-cream px-4 py-4 shadow-card"
+            >
+              <h3 className="font-display text-2xl text-ink">{item.title}</h3>
+              <p className="mt-1 text-sm text-muted">{item.detail}</p>
+            </a>
+          ))}
+        </div>
+      </section>
 
       <section className="grid grid-cols-3 gap-3">
         <Stat value={String(nights)} label={nights === 1 ? "Night planned" : "Nights planned"} />

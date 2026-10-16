@@ -10,6 +10,7 @@ import { useCamp } from "@/lib/store";
 import { CampMap } from "@/components/camp-map";
 import { Button, PageIntro } from "@/components/ui";
 import { campPlace, parsePublicCamps, type PublicCamp } from "@/lib/public-camps";
+import { parseRestStops, restPlace, type RestStop } from "@/lib/rest-stops";
 
 export const Route = createFileRoute("/map")({
   component: MapPage,
@@ -22,7 +23,7 @@ const FILTERS: { id: PlaceKind; label: string }[] = [
   { id: "trail", label: "Trails" },
   { id: "water", label: "Water" },
   { id: "dump", label: "Dumps" },
-  { id: "rest", label: "Rest" },
+  { id: "rest", label: "Rest areas" },
   { id: "shower", label: "Showers" },
 ];
 
@@ -45,6 +46,7 @@ function MapPage() {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [camps, setCamps] = useState<PublicCamp[]>([]);
+  const [stops, setStops] = useState<RestStop[]>([]);
 
   useEffect(() => {
     let cancel = false;
@@ -52,6 +54,12 @@ function MapPage() {
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
         if (!cancel && data) setCamps(parsePublicCamps(data));
+      })
+      .catch(() => undefined);
+    void fetch("/data/rest-areas.json")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (!cancel && Array.isArray(data)) setStops(parseRestStops(data));
       })
       .catch(() => undefined);
     return () => {
@@ -74,9 +82,18 @@ function MapPage() {
       .sort((a, b) => a.miles - b.miles);
   }, [camps, origin, miles, freeOnly, kinds]);
 
+  const stopsNear = useMemo(() => {
+    if (!origin || !kinds.includes("rest")) return [];
+    return stops
+      .map((stop) => ({ stop, miles: milesBetween(origin.lat, origin.lon, stop.lat, stop.lon) }))
+      .filter((item) => item.miles <= miles)
+      .sort((a, b) => a.miles - b.miles);
+  }, [stops, origin, miles, kinds]);
+
   const shown = useMemo(() => {
     const listed = publicNear.slice(0, 40).map((item) => campPlace(item.camp));
-    return [...listed, ...places]
+    const roadside = stopsNear.slice(0, 30).map((item) => restPlace(item.stop));
+    return [...listed, ...roadside, ...places]
       .filter((place) => kinds.includes(place.kind))
       .filter((place) => !freeOnly || place.fee === "free")
       .filter((place) => !origin || milesBetween(origin.lat, origin.lon, place.lat, place.lon) <= miles)
@@ -88,12 +105,13 @@ function MapPage() {
         if (a.miles === null || b.miles === null) return a.place.name.localeCompare(b.place.name);
         return a.miles - b.miles;
       });
-  }, [places, camps, kinds, freeOnly, origin, miles, publicNear]);
+  }, [places, camps, kinds, freeOnly, origin, miles, publicNear, stopsNear]);
 
   const pins = useMemo(
-    () => shown.map((item) => item.place).filter((place) => !place.id.startsWith("pub-")),
+    () => shown.map((item) => item.place).filter((place) => !place.id.startsWith("pub-") && !place.id.startsWith("rest-")),
     [shown],
   );
+  const mapStops = useMemo(() => (kinds.includes("rest") ? stops : []), [stops, kinds]);
   const mapCamps = useMemo(() => {
     if (!kinds.includes("camp")) return [];
     return freeOnly ? camps.filter((camp) => camp.fee === "free") : camps;
@@ -182,7 +200,7 @@ function MapPage() {
   return (
     <div className="space-y-5">
       <PageIntro kicker="Camp map" title="Find the night, and the reason to stop.">
-        Search a U.S. town. Public campgrounds cover the country. Water, dumps, showers, trails, and scenic spots fill in around the search.
+        Search a U.S. town. Public campgrounds cover the country. Rest areas, welcome centers, and service plazas are on the map with the water, dumps, and scenic stops.
       </PageIntro>
       <form onSubmit={onSubmit} className="flex flex-col gap-3 sm:flex-row">
         <label className="block flex-1">
@@ -263,13 +281,17 @@ function MapPage() {
           <CampMap
             places={pins}
             camps={mapCamps}
+            stops={mapStops}
             lat={view.lat}
             lon={view.lon}
             zoom={view.zoom}
             selectedId={selectedId}
             onSelect={(id) => {
               setSelectedId(id);
-              const place = places.find((item) => item.id === id) ?? camps.find((camp) => camp.id === id);
+              const place =
+                places.find((item) => item.id === id) ??
+                (camps.find((camp) => camp.id === id) ? campPlace(camps.find((camp) => camp.id === id)!) : undefined) ??
+                (stops.find((stop) => stop.id === id) ? restPlace(stops.find((stop) => stop.id === id)!) : undefined);
               if (place) setView({ lat: place.lat, lon: place.lon, zoom: Math.max(view.zoom, 11) });
             }}
           />
@@ -277,8 +299,8 @@ function MapPage() {
             {camps.length === 0
               ? "Loading public campsites."
               : origin
-                ? `${publicNear.length} public camps within ${miles} miles. Green dots are listed free, dark dots charge a fee.`
-                : `${camps.length.toLocaleString()} public campsites. Zoom in, or search a town. Green is listed free.`}
+                ? `${publicNear.length} public camps and ${stopsNear.length} rest stops within ${miles} miles. Green dots are free camps. Orange dots are rest areas, welcome centers, and service plazas.`
+                : `${camps.length.toLocaleString()} public campsites and ${stops.length.toLocaleString()} rest stops. Orange dots are rest areas, welcome centers, and service plazas.`}
             {" "}
             Source: American Adventurer public-land records. Check the rules before you stay.
           </p>

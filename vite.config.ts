@@ -1,4 +1,4 @@
-import { readdirSync } from "node:fs";
+import { createReadStream, existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Plugin } from "vite";
 import { defineConfig } from "vite";
@@ -47,6 +47,62 @@ function pgliteBootstrapPlugin(): Plugin {
         console.error("[app-builder] DB bootstrap failed:", err);
         throw err;
       }
+    },
+  };
+}
+
+/**
+ * The old Scoop & Dude pages live in public/<section>/index.html. A request
+ * for /van-life/ has to serve that file, or the app fallback paints Kindling.
+ */
+const SCOOP_PAGES = new Set([
+  "/ai-survival-guide",
+  "/amazon",
+  "/camp-map",
+  "/dinner",
+  "/english",
+  "/faith",
+  "/friends",
+  "/markets",
+  "/printables",
+  "/projects",
+  "/space-lab",
+  "/van-life",
+  "/world-art",
+]);
+
+function scoopPagesPlugin(): Plugin {
+  const serve =
+    (root: string) =>
+    (
+      req: { url?: string },
+      res: {
+        statusCode: number;
+        setHeader: (name: string, value: string) => void;
+      },
+      next: () => void,
+    ) => {
+      const pathOnly = (req.url ?? "").split("?", 1)[0]?.replace(/\/$/, "") || "/";
+      if (!SCOOP_PAGES.has(pathOnly)) {
+        next();
+        return;
+      }
+      const file = join(root, "public", pathOnly.slice(1), "index.html");
+      if (!existsSync(file)) {
+        next();
+        return;
+      }
+      res.statusCode = 200;
+      res.setHeader("content-type", "text/html; charset=utf-8");
+      createReadStream(file).pipe(res as unknown as NodeJS.WritableStream);
+    };
+  return {
+    name: "kindling:scoop-pages",
+    configureServer(server) {
+      server.middlewares.use(serve(server.config.root));
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(serve(server.config.root));
     },
   };
 }
@@ -159,6 +215,7 @@ export default defineConfig(({ command, isPreview }) => ({
   resolve: { tsconfigPaths: true },
   plugins: [
     pgliteBootstrapPlugin(),
+    scoopPagesPlugin(),
     // Before tanstackStart so /auth/popup never falls through to the SPA.
     authPopupPlugin(),
     // Dev-only /__app-env, read by scripts/check-auth-invariant.mjs.

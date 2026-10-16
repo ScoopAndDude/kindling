@@ -45,12 +45,36 @@ function feeOf(tags: Record<string, string>): PlaceFee {
 }
 
 async function geocode(query: string) {
+  const meteo = await openMeteoGeocode(query).catch(() => null);
+  if (meteo) return meteo;
+  const nominatim = await nominatimGeocode(query).catch(() => null);
+  if (nominatim) return nominatim;
+  throw new Error("The town search did not answer.");
+}
+
+async function openMeteoGeocode(query: string) {
+  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=en&format=json&countryCode=US`;
+  const response = await fetch(url, { signal: AbortSignal.timeout(12000) });
+  if (!response.ok) return null;
+  const body = (await response.json()) as {
+    results?: { name?: string; admin1?: string; latitude?: number; longitude?: number; feature_code?: string }[];
+  };
+  const rows = (body.results ?? []).filter(
+    (row) => typeof row.latitude === "number" && typeof row.longitude === "number" && row.feature_code !== "AIRP",
+  );
+  const asked = query.toLowerCase();
+  const hit = rows.find((row) => row.admin1 && asked.includes(row.admin1.toLowerCase())) ?? rows[0];
+  if (!hit || hit.latitude === undefined || hit.longitude === undefined) return null;
+  return { lat: hit.latitude, lon: hit.longitude, label: [hit.name, hit.admin1].filter(Boolean).join(", ") };
+}
+
+async function nominatimGeocode(query: string) {
   const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=us&q=${encodeURIComponent(query)}`;
   const response = await fetch(url, {
     headers: { "User-Agent": UA, Accept: "application/json" },
     signal: AbortSignal.timeout(12000),
   });
-  if (!response.ok) throw new Error("The town search did not answer.");
+  if (!response.ok) return null;
   const rows = (await response.json()) as { lat: string; lon: string; display_name: string }[];
   const hit = rows[0];
   if (!hit) return null;

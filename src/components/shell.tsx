@@ -30,11 +30,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       </a>
       <header className="sticky top-0 z-40 border-b border-ink/10 bg-paper/70 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 px-4 md:px-6">
-          <Link to="/" className="inline-flex min-h-11 items-center gap-2 font-display text-2xl tracking-tight text-ink">
+          <Link to="/" className="inline-flex min-h-11 items-center gap-2 text-ink">
             <span className="grid size-8 place-items-center rounded-full bg-pine text-cream" aria-hidden="true">
               <Flame className="size-4" />
             </span>
-            Kindling
+            <span className="flex flex-col leading-none">
+              <span className="font-display text-2xl tracking-tight">Kindling</span>
+              <span className="text-[11px] font-medium text-muted">Scoop & Dude</span>
+            </span>
           </Link>
           <div className="flex items-center gap-2">
             <InstallApp />
