@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", ui-serif, Georgia, "Times New Roman", serif;
+  --color-paper: #f3eee4;
+  --color-cream: #faf6ef;
+  --color-ink: #1a2218;
+  --color-muted: #6b6558;
+  --color-pine: #2c4a34;
+  --color-ember: #c45a2a;
+  --shadow-card: 0 0 0 1px rgb(26 34 24 / 0.06), 0 1px 2px -1px rgb(26 34 24 / 0.05),
+    0 16px 40px -20px rgb(26 34 24 / 0.25);
+  --aspect-card: 3 / 2;
+  --aspect-hero: 16 / 9;
+  --aspect-poster: 4 / 5;
+  --aspect-food: 4 / 3;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    line-height: 1.15;
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-pine);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+.range-sky {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-color: var(--color-paper);
+  background-image:
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--color-paper) 10%, transparent) 0%,
+      color-mix(in srgb, var(--color-paper) 14%, transparent) 34%,
+      color-mix(in srgb, var(--color-paper) 62%, transparent) 52%,
+      color-mix(in srgb, var(--color-paper) 94%, transparent) 70%,
+      var(--color-paper) 84%
+    ),
+    url("/photos/sunset-range.jpg");
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center bottom;
+}
+
+.map-stage {
+  height: min(70vh, 40rem);
+  min-height: 22rem;
+  background: var(--color-paper);
+}
+.map-stage .leaflet-container {
+  height: 100%;
+  width: 100%;
+  z-index: 0;
+  font-family: var(--font-sans);
+  background: var(--color-paper);
+}
+.pin-wrap {
+  background: transparent;
+  border: 0;
+}
+.map-pin {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid var(--color-cream);
+  box-shadow: 0 1px 3px rgb(26 34 24 / 0.4);
+}
+.map-pin-camp { background: var(--color-pine); }
+.map-pin-waterfall { background: var(--color-ember); }
+.map-pin-scenic {
+  background: var(--color-cream);
+  border-color: var(--color-pine);
+}
+.map-pin-trail { background: var(--color-ink); }
+.map-pin-water { border-radius: 2px; background: var(--color-pine); }
+.map-pin-dump { background: var(--color-muted); }
+.map-pin-rest { border-radius: 2px; background: var(--color-ink); }
+.map-pin-shower { background: var(--color-ember); }
+.map-pin-on {
+  outline: 3px solid var(--color-ember);
+  outline-offset: 2px;
+}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--color-cream);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-card);
+}
+.leaflet-popup-content-wrapper { border-radius: 1rem; }
+.leaflet-popup-content { margin: 0.75rem 1rem; }
+.leaflet-container a { color: var(--color-pine); }
