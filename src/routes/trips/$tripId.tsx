@@ -24,6 +24,7 @@ function TripPage() {
   const setNotes = useCamp((state) => state.setNotes);
   const updateTrip = useCamp((state) => state.updateTrip);
   const removeTrip = useCamp((state) => state.removeTrip);
+  const removeStop = useCamp((state) => state.removeStop);
   const [extra, setExtra] = useState("");
   const [confirming, setConfirming] = useState(false);
 
@@ -53,12 +54,14 @@ function TripPage() {
       <BackLink to="/trips" label="All trips" />
       <div className="grid gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <p className="text-sm font-medium text-pine">{site?.region ?? "Campsite"}</p>
+          <p className="text-sm font-medium text-pine">{trip.overnight === false ? "A stop" : (site?.region ?? STYLE_LABEL[trip.style])}</p>
           <h1 className="mt-1 font-display text-4xl tracking-tight text-ink md:text-5xl">{trip.name}</h1>
           <p className="mt-2 text-muted">
-            {formatRange(trip.start, trip.end)} · {nightLabel(trip.start, trip.end)} · {trip.party}{" "}
+            {formatRange(trip.start, trip.end)}
+            {trip.overnight === false ? " · A stop, not a night" : ` · ${nightLabel(trip.start, trip.end)}`} · {trip.party}{" "}
             {trip.party === 1 ? "person" : "people"}
           </p>
+          {trip.overnight === false ? null : (
           <div className="mt-4 flex items-center gap-4">
             <p className="text-sm tabular-nums text-ink">
               {progress.done} of {progress.total} packed
@@ -67,7 +70,48 @@ function TripPage() {
               <Meter ratio={progress.ratio} />
             </div>
           </div>
+          )}
 
+          {(trip.stops ?? []).length > 0 ? (
+            <section className="mt-8">
+              <h2 className="font-display text-2xl text-ink">Stops along the way</h2>
+              <ul className="mt-2">
+                {(trip.stops ?? []).map((stop) => (
+                  <li key={stop.id} className="flex items-center gap-2 border-b border-ink/10 py-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-ink">{stop.name}</p>
+                      <p className="text-sm text-muted">
+                        {stop.kind}
+                        {stop.area ? ` · ${stop.area}` : ""}
+                      </p>
+                    </div>
+                    {stop.lat !== undefined && stop.lon !== undefined ? (
+                      <a
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${stop.lat.toFixed(5)},${stop.lon.toFixed(5)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex min-h-11 items-center text-sm font-medium text-pine"
+                      >
+                        Directions
+                      </a>
+                    ) : null}
+                    <button
+                      type="button"
+                      aria-label={`Remove ${stop.name}`}
+                      onClick={() => removeStop(trip.id, stop.id)}
+                      className="grid size-11 place-items-center rounded-full text-muted hover:text-ink"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
+          {trip.overnight === false ? (
+            <p className="mt-8 text-muted">Not camping here, so there is no packing list.</p>
+          ) : (
           <div className="mt-8 space-y-6">
             {GROUPS.map((group) => {
               const groupItems = items.filter((item) => item.group === group);
@@ -156,6 +200,7 @@ function TripPage() {
               </form>
             </section>
           </div>
+          )}
         </div>
 
         <aside className="space-y-4">
@@ -175,6 +220,7 @@ function TripPage() {
               </div>
             </Link>
           ) : null}
+          {trip.overnight === false ? null : (
           <label className="block text-sm font-medium text-ink">
             How you are going
             <select
@@ -189,6 +235,7 @@ function TripPage() {
               ))}
             </select>
           </label>
+          )}
           <label className="block text-sm font-medium text-ink">
             Field notes
             <textarea

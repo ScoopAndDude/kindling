@@ -80,8 +80,8 @@
 }
 
 .map-stage {
-  height: min(70vh, 40rem);
-  min-height: 22rem;
+  height: min(78vh, 52rem);
+  min-height: 24rem;
   background: var(--color-paper);
 }
 .map-stage .leaflet-container {

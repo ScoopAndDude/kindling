@@ -1,8 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { CHECKLIST, GEAR, SHELF_SKIP } from "@/data/catalog";
-import { nextWeekdayISO, shiftISO, todayISO } from "@/lib/format";
-import type { Trip, TripStyle } from "@/lib/types";
+import { GEAR, SHELF_SKIP } from "@/data/catalog";
+import type { Trip, TripStyle, Waypoint } from "@/lib/types";
 
 type NewTrip = {
   name: string;
@@ -12,6 +11,10 @@ type NewTrip = {
   party: number;
   style: TripStyle;
   notes?: string;
+  lat?: number;
+  lon?: number;
+  overnight?: boolean;
+  stops?: Waypoint[];
 };
 
 type CampState = {
@@ -23,6 +26,8 @@ type CampState = {
   toggleRecipe: (id: string) => void;
   toggleGear: (id: string) => void;
   addTrip: (trip: NewTrip) => string;
+  addStop: (tripId: string, stop: Omit<Waypoint, "id">) => void;
+  removeStop: (tripId: string, stopId: string) => void;
   updateTrip: (id: string, patch: Partial<Omit<Trip, "id">>) => void;
   removeTrip: (id: string) => void;
   toggleCheck: (tripId: string, itemId: string) => void;
@@ -33,68 +38,16 @@ type CampState = {
 };
 
 function seedTrips(): Trip[] {
-  const start = nextWeekdayISO(5);
-  const later = shiftISO(todayISO(), 21);
-  const pastStart = shiftISO(todayISO(), -18);
-  const carIds = CHECKLIST.filter((item) => item.styles.includes("car")).map((item) => item.id);
-  const pastChecks = Object.fromEntries(carIds.map((id) => [id, true]));
-
-  return [
-    {
-      id: "trip-cedar",
-      name: "Cedar Basin weekend",
-      siteId: "cedar-basin",
-      start,
-      end: shiftISO(start, 2),
-      party: 2,
-      style: "backpack",
-      notes:
-        "Water is a short walk down the spur. Canister required — the firs hold a lot of bear traffic in fall.",
-      checks: {
-        tent: true,
-        stakes: true,
-        bag: true,
-        pad: true,
-        stove: true,
-        pot: true,
-        spark: true,
-        shell: true,
-        filter: true,
-        lamp: true,
-      },
-      extras: [],
-    },
-    {
-      id: "trip-stillwater",
-      name: "Stillwater with the cousins",
-      siteId: "stillwater",
-      start: later,
-      end: shiftISO(later, 3),
-      party: 4,
-      style: "car",
-      notes: "",
-      checks: {},
-      extras: [],
-    },
-    {
-      id: "trip-fogline",
-      name: "Fogline shake-down",
-      siteId: "fogline",
-      start: pastStart,
-      end: shiftISO(pastStart, 2),
-      party: 2,
-      style: "car",
-      notes: "Fog sat in the meadow until midmorning. The lantern earned its weight.",
-      checks: pastChecks,
-      extras: [],
-    },
-  ];
+  return [];
 }
+
+const DEMO_TRIPS = new Set(["trip-cedar", "trip-stillwater", "trip-fogline"]);
+const DEMO_SITES = new Set(["mirror-tarn", "saltgrass"]);
 
 export const useCamp = create<CampState>()(
   persist(
     (set) => ({
-      savedSites: ["mirror-tarn", "saltgrass"],
+      savedSites: [],
       savedRecipes: ["cobbler"],
       ownedGear: GEAR.map((item) => item.id).filter((id) => !SHELF_SKIP.includes(id)),
       trips: seedTrips(),
@@ -131,12 +84,34 @@ export const useCamp = create<CampState>()(
               end: trip.end,
               party: trip.party,
               style: trip.style,
+              lat: trip.lat,
+              lon: trip.lon,
+              overnight: trip.overnight,
+              stops: trip.stops ?? [],
             },
             ...state.trips,
           ],
         }));
         return id;
       },
+      addStop: (tripId, stop) =>
+        set((state) => ({
+          trips: state.trips.map((trip) => {
+            if (trip.id !== tripId) return trip;
+            const stops = trip.stops ?? [];
+            const same = stops.some(
+              (item) => item.name === stop.name && item.lat === stop.lat && item.lon === stop.lon,
+            );
+            if (same) return trip;
+            return { ...trip, stops: [...stops, { ...stop, id: crypto.randomUUID() }] };
+          }),
+        })),
+      removeStop: (tripId, stopId) =>
+        set((state) => ({
+          trips: state.trips.map((trip) =>
+            trip.id === tripId ? { ...trip, stops: (trip.stops ?? []).filter((stop) => stop.id !== stopId) } : trip,
+          ),
+        })),
       updateTrip: (id, patch) =>
         set((state) => ({
           trips: state.trips.map((trip) => (trip.id === id ? { ...trip, ...patch } : trip)),
@@ -190,6 +165,18 @@ export const useCamp = create<CampState>()(
           trips: state.trips.map((trip) => (trip.id === tripId ? { ...trip, notes } : trip)),
         })),
     }),
-    { name: "kindling-camp-v1", skipHydration: true },
+    {
+      name: "kindling-camp-v1",
+      version: 2,
+      skipHydration: true,
+      migrate: (persisted) => {
+        const state = persisted as { trips?: Trip[]; savedSites?: string[] };
+        return {
+          ...state,
+          trips: (state.trips ?? []).filter((trip) => !DEMO_TRIPS.has(trip.id)),
+          savedSites: (state.savedSites ?? []).filter((id) => !DEMO_SITES.has(id)),
+        };
+      },
+    },
   ),
 );

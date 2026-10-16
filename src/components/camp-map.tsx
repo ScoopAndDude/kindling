@@ -4,6 +4,7 @@ import "leaflet/dist/leaflet.css";
 import { KIND_LABEL, type Place, type PlaceFee } from "@/data/landmarks";
 import type { PublicCamp } from "@/lib/public-camps";
 import type { RestStop } from "@/lib/rest-stops";
+import type { ScenicSpot } from "@/lib/scenic";
 
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
@@ -21,7 +22,17 @@ function fillFor(fee: PlaceFee) {
   return "#6b6558";
 }
 
-type MapDot = { id: string; name: string; lat: number; lon: number; area: string; fee?: PlaceFee };
+type MapDot = { id: string; name: string; lat: number; lon: number; area: string; fee?: PlaceFee; kind?: string };
+
+function directionsHref(lat: number, lon: number) {
+  return `https://www.google.com/maps/dir/?api=1&destination=${lat.toFixed(5)},${lon.toFixed(5)}`;
+}
+
+function scenicFill(kind?: string) {
+  if (kind === "waterfall") return "#1d6a8a";
+  if (kind === "trail") return "#3f5c32";
+  return "#6b4c7a";
+}
 
 function paintDots(
   leaflet: Leaflet,
@@ -31,7 +42,7 @@ function paintDots(
   selectedId: string | null,
   onSelect: (id: string) => void,
   canvas: ReturnType<Leaflet["canvas"]>,
-  tone: "camp" | "stop",
+  tone: "camp" | "stop" | "scenic",
 ) {
   layer.clearLayers();
   if (dots.length === 0) return;
@@ -39,8 +50,10 @@ function paintDots(
   const zoom = map.getZoom();
   const visible = dots.filter((dot) => bounds.contains([dot.lat, dot.lon]));
   const step = zoom < 5 ? 1.4 : zoom < 8 ? 0.45 : 0;
-  const fill = (dot: MapDot) => (tone === "stop" ? "#c45a2a" : fillFor(dot.fee ?? "unknown"));
-  const noun = tone === "stop" ? "Rest stop" : "Public camp";
+  const fill = (dot: MapDot) =>
+    tone === "stop" ? "#c45a2a" : tone === "scenic" ? scenicFill(dot.kind) : fillFor(dot.fee ?? "unknown");
+  const noun = (dot: MapDot) =>
+    tone === "stop" ? "Rest stop" : tone === "scenic" ? (dot.kind === "waterfall" ? "Waterfall" : dot.kind === "trail" ? "Trailhead" : "Viewpoint") : "Public camp";
 
   if (step === 0) {
     for (const dot of visible.slice(0, 2500)) {
@@ -54,7 +67,7 @@ function paintDots(
         fillOpacity: 0.92,
       });
       marker.bindPopup(
-        `<strong>${escapeHtml(dot.name)}</strong><br/><span>${noun}${dot.area ? ` · ${escapeHtml(dot.area)}` : ""}</span>`,
+        `<strong>${escapeHtml(dot.name)}</strong><br/><span>${escapeHtml(noun(dot))}${dot.area ? ` · ${escapeHtml(dot.area)}` : ""}</span><br/><a href="${directionsHref(dot.lat, dot.lon)}" target="_blank" rel="noopener">Directions</a>`,
       );
       marker.on("click", () => onSelect(dot.id));
       marker.addTo(layer);
@@ -88,7 +101,7 @@ function paintDots(
         fillOpacity: 0.92,
       });
       marker.bindPopup(
-        `<strong>${escapeHtml(dot.name)}</strong><br/><span>${noun}${dot.area ? ` · ${escapeHtml(dot.area)}` : ""}</span>`,
+        `<strong>${escapeHtml(dot.name)}</strong><br/><span>${escapeHtml(noun(dot))}${dot.area ? ` · ${escapeHtml(dot.area)}` : ""}</span><br/><a href="${directionsHref(dot.lat, dot.lon)}" target="_blank" rel="noopener">Directions</a>`,
       );
       marker.on("click", () => onSelect(dot.id));
       marker.addTo(layer);
@@ -99,10 +112,10 @@ function paintDots(
       radius: Math.min(16, 6 + Math.log2(cell.n) * 2),
       weight: 1,
       color: "#f3efe4",
-      fillColor: tone === "stop" ? "#c45a2a" : "#2c4a34",
+      fillColor: tone === "stop" ? "#c45a2a" : tone === "scenic" ? "#1d6a8a" : "#2c4a34",
       fillOpacity: 0.85,
     });
-    marker.bindTooltip(`${cell.n} ${tone === "stop" ? "rest stops" : "public camps"}`, { direction: "top" });
+    marker.bindTooltip(`${cell.n} ${tone === "stop" ? "rest stops" : tone === "scenic" ? "scenic spots" : "public camps"}`, { direction: "top" });
     marker.on("click", () => {
       map.setView([lat, lon], Math.min(zoom + 2, 9));
     });
@@ -114,6 +127,7 @@ export function CampMap({
   places,
   camps,
   stops,
+  scenic,
   lat,
   lon,
   zoom,
@@ -123,6 +137,7 @@ export function CampMap({
   places: Place[];
   camps: PublicCamp[];
   stops: RestStop[];
+  scenic: ScenicSpot[];
   lat: number;
   lon: number;
   zoom: number;
@@ -134,8 +149,10 @@ export function CampMap({
   const layerRef = useRef<LayerGroup | null>(null);
   const dotsRef = useRef<LayerGroup | null>(null);
   const stopsRef = useRef<LayerGroup | null>(null);
+  const scenicRef = useRef<LayerGroup | null>(null);
   const campsRef = useRef(camps);
   const stopsDataRef = useRef(stops);
+  const scenicDataRef = useRef(scenic);
   const selectedRef = useRef(selectedId);
   const leafletRef = useRef<Leaflet | null>(null);
   const canvasRef = useRef<ReturnType<Leaflet["canvas"]> | null>(null);
@@ -143,6 +160,7 @@ export function CampMap({
   const [ready, setReady] = useState(false);
   campsRef.current = camps;
   stopsDataRef.current = stops;
+  scenicDataRef.current = scenic;
   selectedRef.current = selectedId;
   onSelectRef.current = onSelect;
 
@@ -164,6 +182,7 @@ export function CampMap({
       layerRef.current = leaflet.layerGroup().addTo(map);
       dotsRef.current = leaflet.layerGroup().addTo(map);
       stopsRef.current = leaflet.layerGroup().addTo(map);
+      scenicRef.current = leaflet.layerGroup().addTo(map);
       leafletRef.current = leaflet;
       canvasRef.current = leaflet.canvas({ padding: 0.5 });
       const redraw = () => {
@@ -192,6 +211,18 @@ export function CampMap({
             "stop",
           );
         }
+        if (scenicRef.current) {
+          paintDots(
+            leafletRef.current,
+            map,
+            scenicRef.current,
+            scenicDataRef.current,
+            selectedRef.current,
+            (id) => onSelectRef.current(id),
+            canvasRef.current,
+            "scenic",
+          );
+        }
       };
       map.on("moveend", redraw);
       mapRef.current = map;
@@ -205,6 +236,7 @@ export function CampMap({
       layerRef.current = null;
       dotsRef.current = null;
       stopsRef.current = null;
+      scenicRef.current = null;
       leafletRef.current = null;
       canvasRef.current = null;
       setReady(false);
@@ -242,7 +274,19 @@ export function CampMap({
         "stop",
       );
     }
-  }, [ready, camps, stops, selectedId]);
+    if (scenicRef.current) {
+      paintDots(
+        leafletRef.current,
+        mapRef.current,
+        scenicRef.current,
+        scenic,
+        selectedId,
+        (id) => onSelectRef.current(id),
+        canvasRef.current,
+        "scenic",
+      );
+    }
+  }, [ready, camps, stops, scenic, selectedId]);
 
   useEffect(() => {
     if (!ready || !layerRef.current) return;
@@ -261,7 +305,7 @@ export function CampMap({
         });
         const marker = leaflet.marker([place.lat, place.lon], { icon });
         marker.bindPopup(
-          `<strong>${escapeHtml(place.name)}</strong><br/><span>${escapeHtml(KIND_LABEL[place.kind])}${place.area ? ` · ${escapeHtml(place.area)}` : ""}</span>`,
+          `<strong>${escapeHtml(place.name)}</strong><br/><span>${escapeHtml(KIND_LABEL[place.kind])}${place.area ? ` · ${escapeHtml(place.area)}` : ""}</span><br/><a href="${directionsHref(place.lat, place.lon)}" target="_blank" rel="noopener">Directions</a>`,
         );
         marker.on("click", () => onSelectRef.current(place.id));
         marker.addTo(layerRef.current);

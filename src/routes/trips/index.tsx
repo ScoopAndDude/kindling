@@ -26,14 +26,14 @@ function TripsPage() {
     <div className="space-y-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <PageIntro kicker="The calendar" title="Trips">
-          Each one carries its own list. Backpack, car camp, or a basecamp that does not move.
+          Nights you are actually taking. Name the place, then pack for it.
         </PageIntro>
         <Button variant="ember" onClick={() => setPlanning((open) => !open)}>
           {planning ? "Close" : "Plan a trip"}
         </Button>
       </div>
       {planning ? <TripForm /> : null}
-      <TripList title="Coming up" trips={upcoming} empty="Nothing ahead. Plan a night." />
+      <TripList title="Coming up" trips={upcoming} empty="Nothing ahead yet. Plan a night, or pack a stop from the map." />
       <TripList title="Earlier" trips={earlier} empty="No past trips yet." />
     </div>
   );
@@ -65,20 +65,32 @@ function TripList({
                   params={{ tripId: trip.id }}
                   className="flex gap-4 rounded-2xl bg-cream p-3 shadow-card"
                 >
-                  <div className="aspect-card w-28 shrink-0 overflow-hidden rounded-xl sm:w-40">
-                    {site ? <Photo src={site.image} alt={site.imageAlt} /> : null}
-                  </div>
+                  {site ? (
+                    <div className="aspect-card w-28 shrink-0 overflow-hidden rounded-xl sm:w-40">
+                      <Photo src={site.image} alt={site.imageAlt} />
+                    </div>
+                  ) : null}
                   <div className="min-w-0 flex-1 py-1">
                     <h3 className="font-display text-2xl text-ink">{trip.name}</h3>
                     <p className="mt-1 text-sm text-muted">
-                      {site?.name ?? "Site removed"} · {STYLE_LABEL[trip.style]}
+                      {trip.overnight === false
+                        ? "A stop"
+                        : `${site ? `${site.name} · ` : ""}${STYLE_LABEL[trip.style]}`}
                     </p>
                     <p className="text-sm text-muted">
-                      {formatRange(trip.start, trip.end)} · {nightLabel(trip.start, trip.end)}
+                      {formatRange(trip.start, trip.end)}
+                      {trip.overnight === false ? " · A stop, not a night" : ` · ${nightLabel(trip.start, trip.end)}`}
                     </p>
-                    <p className="mt-3 text-sm tabular-nums text-ink">
-                      {progress.done} of {progress.total} packed
-                    </p>
+                    {trip.overnight === false ? (
+                      <p className="mt-3 text-sm text-ink">
+                        {(trip.stops ?? []).length === 1 ? "1 stop saved" : `${(trip.stops ?? []).length} stops saved`}
+                      </p>
+                    ) : (
+                      <p className="mt-3 text-sm tabular-nums text-ink">
+                        {progress.done} of {progress.total} packed
+                        {(trip.stops ?? []).length > 0 ? ` · ${(trip.stops ?? []).length} stops` : ""}
+                      </p>
+                    )}
                     <div className="mt-2 max-w-xs">
                       <Meter ratio={progress.ratio} />
                     </div>

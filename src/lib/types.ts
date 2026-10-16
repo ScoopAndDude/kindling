@@ -8,6 +8,15 @@ export type ExtraItem = {
   done: boolean;
 };
 
+export type Waypoint = {
+  id: string;
+  name: string;
+  kind: string;
+  area: string;
+  lat?: number;
+  lon?: number;
+};
+
 export type Trip = {
   id: string;
   name: string;
@@ -19,4 +28,8 @@ export type Trip = {
   notes: string;
   checks: Record<string, boolean>;
   extras: ExtraItem[];
+  lat?: number;
+  lon?: number;
+  overnight?: boolean;
+  stops?: Waypoint[];
 };

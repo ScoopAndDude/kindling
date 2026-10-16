@@ -1,10 +1,30 @@
-import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { SITES, siteById } from "@/data/catalog";
+import { KIND_LABEL, LANDMARKS } from "@/data/landmarks";
 import { defaultStyle, nightLabel, nextWeekdayISO, shiftISO } from "@/lib/format";
+import { parsePublicCamps } from "@/lib/public-camps";
+import { parseRestStops } from "@/lib/rest-stops";
 import { useCamp } from "@/lib/store";
 import type { TripStyle } from "@/lib/types";
 import { Button, fieldClasses } from "@/components/ui";
+
+type Spot = {
+  id: string;
+  name: string;
+  area: string;
+  kind: string;
+  lat: number;
+  lon: number;
+  key: string;
+};
+
+function rank(spot: Spot, query: string) {
+  const name = spot.name.toLowerCase();
+  if (name.startsWith(query)) return 0;
+  if (name.includes(query)) return 1;
+  return 2;
+}
 
 export function TripForm({
   defaultSiteId,
@@ -19,28 +39,87 @@ export function TripForm({
   const initialStart = nextWeekdayISO(5);
   const [siteId, setSiteId] = useState(initialSite.id);
   const [style, setStyle] = useState<TripStyle>(defaultStyle(initialSite.access));
-  const [name, setName] = useState(initialSite.name);
-  const [nameTouched, setNameTouched] = useState(false);
+  const [name, setName] = useState(lockSite ? initialSite.name : "");
+  const [where, setWhere] = useState("");
+  const [picked, setPicked] = useState<Spot | null>(null);
+  const [spots, setSpots] = useState<Spot[]>([]);
   const [start, setStart] = useState(initialStart);
   const [end, setEnd] = useState(shiftISO(initialStart, 2));
   const [party, setParty] = useState(2);
   const [error, setError] = useState("");
 
   const site = siteById(siteId) ?? SITES[0];
-  const walkInCar = site.access !== "drive" && style === "car";
+  const walkInCar = lockSite && site.access !== "drive" && style === "car";
 
-  function onSite(nextId: string) {
-    const next = siteById(nextId);
-    setSiteId(nextId);
-    if (!next) return;
-    setStyle(defaultStyle(next.access));
-    if (!nameTouched) setName(next.name);
-  }
+  useEffect(() => {
+    if (lockSite) return;
+    let cancel = false;
+    void Promise.all([
+      fetch("/data/public-camps.json").then((response) => (response.ok ? response.json() : null)),
+      fetch("/data/rest-areas.json").then((response) => (response.ok ? response.json() : null)),
+    ])
+      .then(([camps, rests]) => {
+        if (cancel) return;
+        const next: Spot[] = [];
+        for (const camp of parsePublicCamps(camps ?? {})) {
+          next.push({
+            id: camp.id,
+            name: camp.name,
+            area: camp.area,
+            kind: "Public camp",
+            lat: camp.lat,
+            lon: camp.lon,
+            key: `${camp.name} ${camp.area}`.toLowerCase(),
+          });
+        }
+        for (const stop of parseRestStops(Array.isArray(rests) ? rests : [])) {
+          next.push({
+            id: stop.id,
+            name: stop.name,
+            area: stop.area,
+            kind: "Rest stop",
+            lat: stop.lat,
+            lon: stop.lon,
+            key: `${stop.name} ${stop.area}`.toLowerCase(),
+          });
+        }
+        for (const place of LANDMARKS) {
+          next.push({
+            id: place.id,
+            name: place.name,
+            area: place.area,
+            kind: KIND_LABEL[place.kind],
+            lat: place.lat,
+            lon: place.lon,
+            key: `${place.name} ${place.area}`.toLowerCase(),
+          });
+        }
+        setSpots(next);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancel = true;
+    };
+  }, [lockSite]);
+
+  const matches = useMemo(() => {
+    const query = where.trim().toLowerCase();
+    if (query.length < 2 || picked || spots.length === 0) return [];
+    return spots
+      .filter((spot) => spot.key.includes(query))
+      .sort((a, b) => rank(a, query) - rank(b, query))
+      .slice(0, 8);
+  }, [where, spots, picked]);
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmed = name.trim();
-    if (!trimmed) {
+    const place = where.trim();
+    if (!lockSite && !picked) {
+      setError("Pick a public camp, rest stop, or known spot from the list.");
+      return;
+    }
+    if (!trimmed && !place) {
       setError("Give the trip a name.");
       return;
     }
@@ -53,12 +132,15 @@ export function TripForm({
       return;
     }
     const id = addTrip({
-      name: trimmed,
-      siteId,
+      name: trimmed || picked?.name || place,
+      siteId: lockSite ? siteId : "custom",
       start,
       end,
       party,
       style,
+      notes: lockSite ? undefined : picked ? `${picked.kind}${picked.area ? ` · ${picked.area}` : ""}` : place,
+      lat: picked?.lat,
+      lon: picked?.lon,
     });
     void navigate({ to: "/trips/$tripId", params: { tripId: id } });
   }
@@ -74,10 +156,8 @@ export function TripForm({
           Trip name
           <input
             value={name}
-            onChange={(event) => {
-              setNameTouched(true);
-              setName(event.target.value);
-            }}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Optional. Defaults to the place."
             className={fieldClasses("mt-1")}
           />
         </label>
@@ -86,20 +166,58 @@ export function TripForm({
             At <span className="font-medium text-ink">{site.name}</span> · {site.region}
           </p>
         ) : (
-          <label className="block text-sm font-medium text-ink sm:col-span-2">
-            Campsite
-            <select
-              value={siteId}
-              onChange={(event) => onSite(event.target.value)}
-              className={fieldClasses("mt-1")}
-            >
-              {SITES.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-ink">
+              Where
+              <input
+                value={where}
+                onChange={(event) => {
+                  setWhere(event.target.value);
+                  setPicked(null);
+                }}
+                placeholder="Search a public camp or rest stop"
+                className={fieldClasses("mt-1")}
+              />
+            </label>
+            <p className="mt-2 text-sm text-muted">
+              Public camps, rest areas, and known stops already mapped.{" "}
+              <Link to="/map" className="font-medium text-pine">
+                Or pick one on the map.
+              </Link>
+            </p>
+            {where.trim().length >= 2 && spots.length === 0 ? (
+              <p className="mt-2 text-sm text-muted">Loading the public spots…</p>
+            ) : null}
+            {picked ? (
+              <p className="mt-2 text-sm text-ink">
+                {picked.kind}
+                {picked.area ? ` · ${picked.area}` : ""}
+              </p>
+            ) : null}
+            {matches.length > 0 ? (
+              <ul className="mt-2 overflow-hidden rounded-xl bg-paper shadow-card">
+                {matches.map((spot) => (
+                  <li key={spot.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPicked(spot);
+                        setWhere(spot.name);
+                        if (!name.trim()) setName(spot.name);
+                      }}
+                      className="flex min-h-11 w-full flex-col items-start justify-center px-3 py-2 text-left hover:bg-cream"
+                    >
+                      <span className="text-ink">{spot.name}</span>
+                      <span className="text-sm text-muted">
+                        {spot.kind}
+                        {spot.area ? ` · ${spot.area}` : ""}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
         )}
         <label className="block text-sm font-medium text-ink">
           Start

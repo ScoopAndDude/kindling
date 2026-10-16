@@ -122,21 +122,17 @@ async function overpass(lat: number, lon: number, meters: number): Promise<Place
     const pointLat = element.lat ?? element.center?.lat;
     const pointLon = element.lon ?? element.center?.lon;
     if (pointLat === undefined || pointLon === undefined) continue;
+    const named = tags.name?.trim();
+    if (!named && (kind === "water" || kind === "dump" || kind === "shower")) continue;
     const name =
-      tags.name ||
+      named ||
       (kind === "camp"
         ? "Camp site"
-        : kind === "dump"
-          ? "Dump station"
-          : kind === "water"
-            ? "Water"
-            : kind === "trail"
-              ? "Trailhead"
-              : kind === "rest"
-                ? "Rest area"
-                : kind === "shower"
-                  ? "Shower"
-                  : "");
+        : kind === "trail"
+          ? "Trailhead"
+          : kind === "rest"
+            ? "Rest area"
+            : "");
     if (!name) continue;
     const area = [tags["addr:city"], tags["addr:state"]].filter(Boolean).join(", ");
     places.push({
@@ -195,10 +191,12 @@ async function publicPois(lat: number, lon: number, miles: number): Promise<Plac
       };
       return (body.poi ?? []).flatMap((row, index) => {
         if (typeof row.lat !== "number" || typeof row.lon !== "number") return [];
+        const name = row.name?.trim();
+        if (!name || name.toLowerCase() === fallback.toLowerCase()) return [];
         return [
           {
             id: `poi-${cat}-${index}`,
-            name: row.name?.trim() || fallback,
+            name,
             kind,
             lat: row.lat,
             lon: row.lon,
