@@ -3,7 +3,7 @@
   "short_name": "Kindling",
   "description": "Plan campsites, pack a kit, and cook over coals.",
   "id": "/",
-  "start_url": "/",
+  "start_url": "/map",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f3eee4",

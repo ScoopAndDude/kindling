@@ -14,6 +14,7 @@ const NAV = [
 ] as const;
 
 const SCOOP = [
+  { href: "/", title: "Scoop & Dude home" },
   { href: "/rebecca-schlief/", title: "Remembering Mom" },
   { href: "/van-life/", title: "Van life" },
   { href: "/dinner/", title: "The Dinner Scoop" },
@@ -60,6 +61,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
           </Link>
           <div className="flex items-center gap-2">
+            <a
+              href="/"
+              className="inline-flex min-h-11 items-center rounded-full bg-cream px-4 text-sm font-medium text-ink shadow-card hover:bg-paper"
+            >
+              Home
+            </a>
             <InstallApp />
             <nav className="hidden items-center gap-1 md:flex" aria-label="Primary">
             {NAV.map((item) => (

@@ -56,6 +56,8 @@ function pgliteBootstrapPlugin(): Plugin {
  * for /van-life/ has to serve that file, or the app fallback paints Kindling.
  */
 const SCOOP_PAGES = new Set([
+  "/",
+  "/rebecca-schlief",
   "/ai-survival-guide",
   "/amazon",
   "/camp-map",
@@ -87,7 +89,7 @@ function scoopPagesPlugin(): Plugin {
         next();
         return;
       }
-      const file = join(root, "public", pathOnly.slice(1), "index.html");
+      const file = join(root, "public", pathOnly === "/" ? "" : pathOnly.slice(1), "index.html");
       if (!existsSync(file)) {
         next();
         return;
