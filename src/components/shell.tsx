@@ -14,6 +14,7 @@ const NAV = [
 ] as const;
 
 const SCOOP = [
+  { href: "/rebecca-schlief/", title: "Remembering Mom" },
   { href: "/van-life/", title: "Van life" },
   { href: "/dinner/", title: "The Dinner Scoop" },
   { href: "/camp-map/", title: "Old camp map" },
@@ -36,6 +37,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     void useCamp.persist.rehydrate();
   }, []);
   const wide = useRouterState({ select: (state) => state.location.pathname === "/map" });
+  const home = wide;
 
   return (
     <div className="min-h-screen">
@@ -78,6 +80,12 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Link>
             ))}
           </nav>
+            <a
+              href="/rebecca-schlief/"
+              className="hidden min-h-11 items-center rounded-full px-2 text-sm font-medium text-muted hover:text-ink md:inline-flex"
+            >
+              Remembering Mom
+            </a>
           </div>
         </div>
       </header>
@@ -91,6 +99,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         {children}
       </main>
+      {home ? <MemorialCard /> : null}
       <footer className="border-t border-ink/10 bg-paper/80">
         <div className="mx-auto grid max-w-5xl gap-8 px-4 py-8 pb-28 sm:grid-cols-2 md:px-6 md:pb-10">
           <nav aria-label="Kindling">
@@ -149,5 +158,34 @@ export function AppShell({ children }: { children: ReactNode }) {
         </ul>
       </nav>
     </div>
+  );
+}
+
+function MemorialCard() {
+  return (
+    <section aria-labelledby="memorial-card-h" className="mx-auto w-full max-w-5xl px-4 pb-10 md:px-6">
+      <a
+        href="/rebecca-schlief/"
+        className="flex items-center gap-4 rounded-2xl bg-cream p-4 shadow-card outline outline-1 -outline-offset-1 outline-ink/10 transition-colors hover:bg-paper sm:gap-5 sm:p-5"
+      >
+        <img
+          src="/assets/img/becky-portrait-206.jpg"
+          alt="Becky Schlief smiling, wearing glasses"
+          width={206}
+          height={206}
+          loading="lazy"
+          decoding="async"
+          className="size-20 flex-none rounded-full object-cover ring-4 ring-ember/40 sm:size-24"
+        />
+        <span className="flex flex-col gap-1">
+          <span className="text-xs font-medium uppercase tracking-wide text-pine">In loving memory</span>
+          <span id="memorial-card-h" className="font-display text-2xl leading-tight text-ink">
+            My mom, Becky Schlief
+          </span>
+          <span className="text-sm text-muted">Remembering her, and still looking for answers.</span>
+          <span className="mt-1 text-sm font-medium text-pine">Read her story &rarr;</span>
+        </span>
+      </a>
+    </section>
   );
 }
