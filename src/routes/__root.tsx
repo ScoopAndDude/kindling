@@ -32,6 +32,11 @@ export const Route = createRootRoute({
     <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1565069456902868"
+          crossOrigin="anonymous"
+        />
       </head>
       <body>
         <PreviewHostBridge />
