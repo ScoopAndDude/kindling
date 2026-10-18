@@ -56,6 +56,22 @@
   .cards a.big { background: var(--sign); color: #fff; border-color: var(--sign); }
   .cards a.big span { opacity: .92; }
   .follow-row { display: flex; flex-wrap: wrap; gap: 10px; }
+  /* Morning forecast email sign-up (Oct. 17, 2026): posts to La Porte Weather Now's sign-up function */
+  .wx-card { max-width: 760px; background: var(--concrete); border-radius: 14px; padding: 20px; border: 2px solid var(--line); }
+  .wx-card h2 { margin: 0 0 .3rem; }
+  .wx-card p { margin: 0 0 .8rem; }
+  .wx-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; }
+  .wx-form label { display: grid; gap: 4px; font-weight: 700; font-size: .95rem; }
+  .wx-form input { font: inherit; min-height: 46px; padding: 8px 12px; border: 2px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink); width: 100%; box-sizing: border-box; }
+  .wx-form .btn { min-height: 46px; }
+  .wx-hp { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+  .wx-which { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; }
+  .wx-which[hidden] { display: none; }
+  .wx-which button { font: inherit; font-size: .95rem; min-height: 40px; padding: 4px 12px; border-radius: 10px; border: 2px solid var(--sign); background: var(--paper); color: var(--ink); cursor: pointer; }
+  .wx-status { font-weight: 700; margin: 10px 0 0 !important; min-height: 1.2em; }
+  .wx-status.err { color: #b3261e; }
+  html.dark .wx-status.err { color: #ff8a80; }
+  @media (max-width: 640px) { .wx-form { grid-template-columns: 1fr; } }
   @media (max-width: 520px) { .h-hero .wrap { padding-top: 48px; padding-bottom: 48px; } .h-hero .cta .btn { flex: 1 1 100%; text-align: center; } .mem-card img { width: 72px; height: 72px; } }
 </style>
 <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","@id":"https://scoopanddude.com/#site","url":"https://scoopanddude.com/","name":"Scoop & Dude"}]}</script>
@@ -176,6 +192,24 @@
   </div>
 </section>
 
+<section class="h-sec" id="morning-forecast" aria-labelledby="wx-h">
+  <div class="wrap">
+    <div class="wx-card">
+      <h2 id="wx-h">Your forecast at 6 AM</h2>
+      <p>A free morning email from my weather site, <a href="https://laporteweathernow.com/morning-email">La Porte Weather Now</a>: the National Weather Service forecast for your own ZIP code, any watches or warnings, and the next three days, at 6 AM your time. Anywhere in the U.S.</p>
+      <form class="wx-form" id="wxForm" novalidate>
+        <label class="wx-hp" aria-hidden="true">Leave this empty <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+        <label for="wxEmail">Email <input type="email" id="wxEmail" name="email" autocomplete="email" placeholder="you@email.com" required></label>
+        <label for="wxPlace">ZIP code or town <input type="text" id="wxPlace" name="place" autocomplete="postal-code" placeholder="46350, or Springfield, IL" maxlength="80" required></label>
+        <button class="btn" type="submit">Sign me up</button>
+      </form>
+      <div class="wx-which" id="wxWhich" hidden></div>
+      <p class="wx-status" id="wxStatus" role="status" aria-live="polite"></p>
+      <p class="small" style="margin:0;">We&rsquo;ll email you a link to confirm first; nothing comes until you tap it. Sent with Brevo by La Porte Weather Now; your email and place are used only for this, and every email has a one-tap unsubscribe. <a href="https://laporteweathernow.com/privacy#email">Privacy</a></p>
+    </div>
+  </div>
+</section>
+
 <section class="h-sec" id="follow" aria-labelledby="follow-h">
   <div class="wrap">
     <h2 id="follow-h">Follow along</h2>
@@ -198,5 +232,47 @@
   </div>
 </footer>
 <script src="/assets/js/site.js" defer></script>
+<script>
+/* Morning forecast email sign-up (Oct. 17, 2026). Posts to La Porte Weather Now's sign-up function, which
+   allows this site by CORS. Same flow as laporteweathernow.com/morning-email: confirmation email first. */
+(function () {
+  var API = "https://laporteweathernow.com/api/morning-signup";
+  var f = document.getElementById("wxForm"), st = document.getElementById("wxStatus"), which = document.getElementById("wxWhich");
+  if (!f) return;
+  var loaded = Date.now();
+  var ERR = { zip: "We couldn\u2019t find that ZIP code. Check it, or type your town and state.",
+    place: "We couldn\u2019t find that place. Try your ZIP code, or a town and state like \u201cSpringfield, IL\u201d.",
+    nws: "The Weather Service doesn\u2019t have a forecast for that spot. Try a nearby ZIP code.",
+    email: "Please check your email address.", "not-ready": "The morning email isn\u2019t taking sign-ups right now. Please try again later." };
+  function say(t, bad) { st.textContent = t; st.className = "wx-status" + (bad ? " err" : ""); }
+  function send() {
+    var email = f.email.value.trim(), place = f.place.value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email)) return say(ERR.email, true);
+    if (!place) { f.place.focus(); return say("Please add your ZIP code or town.", true); }
+    var btn = f.querySelector("button"); btn.disabled = true; say("Sending\u2026");
+    fetch(API, { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email, place: place, website: f.website.value, t: Date.now() - loaded }) })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (b) { b.httpOk = r.ok; return b; }); })
+      .then(function (b) {
+        if (b.httpOk && b.ok) {
+          which.hidden = true; f.email.value = "";
+          say("Almost done: check your inbox (and spam folder) for our email" + (b.label ? " about " + b.label : "") + " and tap the button in it.");
+        } else if (b.error === "which" && b.choices) {
+          say("Which one?"); which.innerHTML = "";
+          b.choices.forEach(function (c) {
+            var x = document.createElement("button"); x.type = "button"; x.textContent = c;
+            x.addEventListener("click", function () { f.place.value = c; which.hidden = true; send(); });
+            which.appendChild(x);
+          });
+          which.hidden = false;
+        } else say(ERR[b.error] || "That didn\u2019t go through. Please try again in a minute.", true);
+      })
+      .catch(function () { say("That didn\u2019t go through. Please try again in a minute.", true); })
+      .then(function () { btn.disabled = false; });
+  }
+  f.addEventListener("submit", function (e) { e.preventDefault(); send(); });
+  f.place.addEventListener("input", function () { which.hidden = true; });
+})();
+</script>
 </body>
 </html>
