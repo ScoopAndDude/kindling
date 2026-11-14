@@ -235,12 +235,6 @@ export default defineConfig(({ command, isPreview }) => ({
             // manifest + head-tag middleware). Nitro v3 defaults serverDir to
             // false, so removing this silently unwires /?install=1 on deploys.
             serverDir: "./server",
-            // scoopanddude.com/Cambo (Luna's roof and woodstove fundraiser, Nov. 14, 2026) is a
-            // static page in public/Cambo/. Send the lowercase address there too.
-            routeRules: {
-              "/cambo": { redirect: "/Cambo/" },
-              "/cambo/": { redirect: "/Cambo/" },
-            },
           }),
         ]
       : []),
