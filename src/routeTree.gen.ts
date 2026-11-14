@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CamboRouteImport } from './routes/cambo'
 import { Route as KitRouteImport } from './routes/kit'
 import { Route as MapRouteImport } from './routes/map'
 import { Route as RadarRouteImport } from './routes/radar'
@@ -23,6 +24,11 @@ import { Route as TripsTripIdRouteImport } from './routes/trips/$tripId'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CamboRoute = CamboRouteImport.update({
+  id: '/cambo',
+  path: '/cambo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KitRoute = KitRouteImport.update({
@@ -73,6 +79,7 @@ const TripsTripIdRoute = TripsTripIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/cambo': typeof CamboRoute
   '/kit': typeof KitRoute
   '/map': typeof MapRoute
   '/radar': typeof RadarRoute
@@ -85,6 +92,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/cambo': typeof CamboRoute
   '/kit': typeof KitRoute
   '/map': typeof MapRoute
   '/radar': typeof RadarRoute
@@ -98,6 +106,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/cambo': typeof CamboRoute
   '/kit': typeof KitRoute
   '/map': typeof MapRoute
   '/radar': typeof RadarRoute
@@ -112,6 +121,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/cambo'
     | '/kit'
     | '/map'
     | '/radar'
@@ -124,6 +134,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/cambo'
     | '/kit'
     | '/map'
     | '/radar'
@@ -136,6 +147,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/cambo'
     | '/kit'
     | '/map'
     | '/radar'
@@ -149,6 +161,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CamboRoute: typeof CamboRoute
   KitRoute: typeof KitRoute
   MapRoute: typeof MapRoute
   RadarRoute: typeof RadarRoute
@@ -167,6 +180,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cambo': {
+      id: '/cambo'
+      path: '/cambo'
+      fullPath: '/cambo'
+      preLoaderRoute: typeof CamboRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/kit': {
@@ -237,6 +257,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CamboRoute: CamboRoute,
   KitRoute: KitRoute,
   MapRoute: MapRoute,
   RadarRoute: RadarRoute,
